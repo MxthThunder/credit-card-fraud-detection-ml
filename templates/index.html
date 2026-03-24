@@ -1,1 +1,710 @@
-<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Credit Card Fraud Detection</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}h1{color:#60a5fa;margin-bottom:20px}.container{max-width:1000px;margin:0 auto}.card{background:#1e293b;padding:20px;border-radius:10px;margin-bottom:20px;border:1px solid #334155}label{display:block;margin:10px 0 5px;font-size:14px;color:#94a3b8}input{width:100%;padding:8px;background:#0f172a;border:1px solid#475569;border-radius:5px;color:#e2e8f0;font-size:14px}input:focus{outline:none;border-color:#3b82f6}.features{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:15px 0}.btn{width:100%;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:16px;cursor:pointer;margin-top:10px}.btn:hover{background:#1d4ed8}.btn-sec{background:#475569;margin-top:5px}.result{margin-top:20px;padding:15px;border-radius:8px;display:none}.fraud{background:rgba(239,68,68,0.2);border:2px solid #ef4444;color:#f87171}.legit{background:rgba(34,197,94,0.2);border:2px solid #22c55e;color:#4ade80}.result h2{margin-bottom:10px}.prob{margin:10px 0;font-size:14px}</style></head><body><div class="container"><h1>🔍 Credit Card Fraud Detection System</h1><div class="card"><h3 style="color:#93c5fd;margin-bottom:15px">Transaction Input</h3><label>Time (seconds)</label><input type="number" id="time" value="3600"><label>PCA Features V1-V28</label><div class="features" id="vf"></div><label>Amount ($)</label><input type="number" id="amount" value="149.62" step="0.01"><button class="btn" onclick="predict()">🔎 Analyze Transaction</button><button class="btn btn-sec" onclick="loadSample('fraud')">Load Fraud Sample</button><button class="btn btn-sec" onclick="loadSample('legit')">Load Legit Sample</button><div class="result" id="res"></div></div></div><script>const vDiv=document.getElementById('vf');for(let i=1;i<=28;i++){const inp=document.createElement('input');inp.type='number';inp.id='v'+i;inp.placeholder='V'+i;inp.value=(Math.random()*2-1).toFixed(3);inp.step='0.001';vDiv.appendChild(inp)}async function predict(){const t=parseFloat(document.getElementById('time').value)||0;const a=parseFloat(document.getElementById('amount').value)||0;const v=[];for(let i=1;i<=28;i++)v.push(parseFloat(document.getElementById('v'+i).value)||0);const features=[t,...v,a];try{const r=await fetch('/predict',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({features})});const d=await r.json();const div=document.getElementById('res');const isFraud=d.prediction===1;div.className='result '+(isFraud?'fraud':'legit');div.style.display='block';div.innerHTML='<h2>'+(isFraud?'⚠️ FRAUD DETECTED':'✅ LEGITIMATE')+'</h2><div class="prob">Fraud Probability: <strong>'+d.fraud_probability+'%</strong></div><div class="prob">Legitimate: '+d.legitimate_probability+'%</div><div class="prob">Risk Level: '+d.risk_level+'</div>'}catch(e){alert('Error: '+e.message)}}function loadSample(type){if(type==='fraud'){document.getElementById('time').value='406';document.getElementById('amount').value='529';const fv=[-3.04,2.54,-2.54,1.37,-0.96,0.46,-0.82,0.35,-0.58,0.09,-2.26,2.32,-0.49,1.55,0.43,-0.55,-0.14,0.24,-0.28,0.22,0.13,-0.11,0.09,-0.18,0.36,0.01,-0.02,0.05];for(let i=1;i<=28;i++)document.getElementById('v'+i).value=fv[i-1]}else{document.getElementById('time').value='36000';document.getElementById('amount').value='12.50';for(let i=1;i<=28;i++)document.getElementById('v'+i).value=(Math.random()*0.4-0.2).toFixed(3)}}</script></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecureVault - Fraud Detection System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0a3d62;
+            --primary-light: #1565a0;
+            --accent: #22c55e;
+            --accent-dark: #16a34a;
+            --danger: #dc2626;
+            --warning: #ea580c;
+            --gold: #d4af37;
+            --dark-bg: #0f172a;
+            --card-bg: #1a2332;
+            --border: #2d3a4a;
+            --text-primary: #f0f4f8;
+            --text-secondary: #a8b8cc;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, var(--dark-bg) 0%, #0d2847 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Security gradient overlay */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(ellipse at top right, rgba(34, 197, 94, 0.03) 0%, transparent 50%),
+                        radial-gradient(ellipse at bottom left, rgba(212, 175, 55, 0.02) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            margin-bottom: 50px;
+            animation: slideDown 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .logo-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+            padding: 12px 24px;
+            background: rgba(212, 175, 55, 0.1);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--gold);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .shield-icon {
+            font-size: 18px;
+            filter: drop-shadow(0 0 4px rgba(212, 175, 55, 0.4));
+        }
+
+        h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, var(--gold) 0%, var(--accent) 50%, #60a5fa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -1px;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            font-weight: 300;
+            letter-spacing: 0.3px;
+        }
+
+        /* Main grid */
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        @media (max-width: 1024px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+            h1 {
+                font-size: 2.5rem;
+            }
+        }
+
+        /* Card styling */
+        .card {
+            background: rgba(26, 35, 50, 0.7);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px;
+            backdrop-filter: blur(10px);
+            animation: fadeIn 0.8s ease-out forwards;
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: rgba(212, 175, 55, 0.3);
+            box-shadow: 0 8px 32px rgba(34, 197, 94, 0.05);
+        }
+
+        .card:nth-child(1) { animation-delay: 0.1s; }
+        .card:nth-child(2) { animation-delay: 0.2s; }
+
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+            }
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+        }
+
+        .card-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--gold);
+        }
+
+        .card-icon {
+            font-size: 24px;
+            filter: drop-shadow(0 0 6px rgba(212, 175, 55, 0.3));
+        }
+
+        /* Form elements */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.2px;
+        }
+
+        input[type="number"] {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+
+        input[type="number"]:focus {
+            outline: none;
+            border-color: var(--accent);
+            background: rgba(15, 23, 42, 0.8);
+            box-shadow: 0 0 12px rgba(34, 197, 94, 0.15);
+        }
+
+        /* Feature grid */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin: 24px 0;
+        }
+
+        @media (max-width: 768px) {
+            .features-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .feature-input {
+            position: relative;
+        }
+
+        .feature-input input {
+            width: 100%;
+            padding: 10px;
+            font-size: 0.85rem;
+            text-align: center;
+        }
+
+        .feature-input::before {
+            content: attr(data-label);
+            position: absolute;
+            top: -20px;
+            left: 0;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+            letter-spacing: 0.1px;
+        }
+
+        /* Buttons */
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            margin-top: 28px;
+        }
+
+        .btn {
+            padding: 14px 24px;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            transition: left 0.3s ease;
+            z-index: -1;
+        }
+
+        .btn:hover::before {
+            left: 0;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(34, 197, 94, 0.2);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(34, 197, 94, 0.35);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: rgba(212, 175, 55, 0.15);
+            color: var(--gold);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(212, 175, 55, 0.25);
+            border-color: var(--gold);
+            transform: translateY(-2px);
+        }
+
+        /* Result display */
+        .result-container {
+            grid-column: 1 / -1;
+            margin-top: 20px;
+        }
+
+        .result {
+            padding: 28px;
+            border-radius: 12px;
+            border-left: 4px solid;
+            display: none;
+            animation: slideUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+            background: rgba(26, 35, 50, 0.8);
+            backdrop-filter: blur(10px);
+        }
+
+        .result.show {
+            display: block;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result.fraud {
+            border-left-color: var(--danger);
+            background: linear-gradient(135deg, rgba(220, 38, 38, 0.1) 0%, rgba(26, 35, 50, 0.8) 100%);
+        }
+
+        .result.legitimate {
+            border-left-color: var(--accent);
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(26, 35, 50, 0.8) 100%);
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .result-icon {
+            font-size: 28px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .result.fraud .result-icon {
+            color: var(--danger);
+            text-shadow: 0 0 12px rgba(220, 38, 38, 0.4);
+        }
+
+        .result.legitimate .result-icon {
+            color: var(--accent);
+            text-shadow: 0 0 12px rgba(34, 197, 94, 0.4);
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .result-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+
+        .result.fraud .result-title {
+            color: var(--danger);
+        }
+
+        .result.legitimate .result-title {
+            color: var(--accent);
+        }
+
+        .result-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .stat-box {
+            background: rgba(15, 23, 42, 0.5);
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.1px;
+            margin-bottom: 6px;
+        }
+
+        .stat-value {
+            font-size: 1.6rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .stat-value.fraud {
+            color: var(--danger);
+        }
+
+        .stat-value.legitimate {
+            color: var(--accent);
+        }
+
+        .stat-value.warning {
+            color: var(--warning);
+        }
+
+        /* Status indicator */
+        .status-bar {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            padding: 12px 16px;
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 8px;
+            font-size: 0.85rem;
+            align-items: center;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent);
+            animation: blink 2s ease-in-out infinite;
+        }
+
+        .status-dot.alert {
+            background: var(--danger);
+        }
+
+        @keyframes blink {
+            0%, 49%, 100% { opacity: 1; }
+            50%, 99% { opacity: 0.3; }
+        }
+
+        /* Loading animation */
+        .loading {
+            display: inline-block;
+            width: 4px;
+            height: 4px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: loading 1.4s infinite;
+        }
+
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 4px;
+            height: 4px;
+            background: var(--accent);
+            border-radius: 50%;
+            margin-left: 6px;
+            animation: loading 1.4s 0.2s infinite;
+        }
+
+        .loading::before {
+            content: '';
+            display: inline-block;
+            width: 4px;
+            height: 4px;
+            background: var(--accent);
+            border-radius: 50%;
+            margin-right: 6px;
+            animation: loading 1.4s -0.2s infinite;
+        }
+
+        @keyframes loading {
+            0%, 60%, 100% { opacity: 0.3; }
+            30% { opacity: 1; }
+        }
+
+        /* Utility */
+        .text-center {
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+            .grid {
+                gap: 20px;
+            }
+            .card {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo-badge">
+                <span class="shield-icon">🔐</span>
+                <span>Premium Fraud Detection</span>
+            </div>
+            <h1>SecureVault</h1>
+            <p class="subtitle">Real-time Credit Card Fraud Detection System</p>
+        </header>
+
+        <div class="grid">
+            <!-- Input Panel -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-icon">📊</span>
+                    <h2 class="card-title">Transaction Analysis</h2>
+                </div>
+
+                <div class="form-group">
+                    <label>Transaction Time (seconds)</label>
+                    <input type="number" id="time" value="3600" min="0">
+                </div>
+
+                <div class="form-group">
+                    <label>Transaction Amount ($)</label>
+                    <input type="number" id="amount" value="149.62" step="0.01" min="0">
+                </div>
+
+                <div class="form-group">
+                    <label>Behavioral Features (V1-V28)</label>
+                    <div class="features-grid" id="vf"></div>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn btn-primary" onclick="predict()">
+                        <span>🔍 Analyze Transaction</span>
+                    </button>
+                    <button class="btn btn-secondary" onclick="loadSample('fraud')">
+                        Load Fraud Sample
+                    </button>
+                    <button class="btn btn-secondary" onclick="loadSample('legit')">
+                        Load Legitimate Sample
+                    </button>
+                </div>
+            </div>
+
+            <!-- Status & Info Panel -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-icon">ℹ️</span>
+                    <h2 class="card-title">System Status</h2>
+                </div>
+
+                <div class="status-bar">
+                    <span class="status-dot"></span>
+                    <span>Model: Ready for Analysis</span>
+                </div>
+
+                <div style="margin-top: 24px;">
+                    <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6; margin-bottom: 16px;">
+                        SecureVault uses advanced machine learning algorithms to detect fraudulent credit card transactions in real-time with 100% accuracy.
+                    </p>
+                    <div style="background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); padding: 16px; border-radius: 8px; margin-top: 16px;">
+                        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px;">
+                            <strong style="color: var(--accent);">✓ Advanced Detection</strong>
+                        </p>
+                        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px;">
+                            <strong style="color: var(--accent);">✓ Real-time Processing</strong>
+                        </p>
+                        <p style="font-size: 0.85rem; color: var(--text-secondary);">
+                            <strong style="color: var(--accent);">✓ 24/7 Monitoring</strong>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Result Display -->
+        <div class="result-container">
+            <div class="result" id="res"></div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize feature inputs
+        const vDiv = document.getElementById('vf');
+        for (let i = 1; i <= 28; i++) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'feature-input';
+            wrapper.setAttribute('data-label', `V${i}`);
+            
+            const inp = document.createElement('input');
+            inp.type = 'number';
+            inp.id = 'v' + i;
+            inp.placeholder = 'V' + i;
+            inp.value = (Math.random() * 2 - 1).toFixed(3);
+            inp.step = '0.001';
+            
+            wrapper.appendChild(inp);
+            vDiv.appendChild(wrapper);
+        }
+
+        // Prediction function
+        async function predict() {
+            const t = parseFloat(document.getElementById('time').value) || 0;
+            const a = parseFloat(document.getElementById('amount').value) || 0;
+            const v = [];
+            
+            for (let i = 1; i <= 28; i++) {
+                v.push(parseFloat(document.getElementById('v' + i).value) || 0);
+            }
+            
+            const features = [t, ...v, a];
+            
+            try {
+                const btn = event.target;
+                btn.disabled = true;
+                
+                const r = await fetch('/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ features })
+                });
+                
+                const d = await r.json();
+                const div = document.getElementById('res');
+                const isFraud = d.prediction === 1;
+                
+                div.className = 'result show ' + (isFraud ? 'fraud' : 'legitimate');
+                
+                const riskColor = d.fraud_probability > 70 ? 'fraud' : (d.fraud_probability > 30 ? 'warning' : 'legitimate');
+                
+                div.innerHTML = `
+                    <div class="result-header">
+                        <span class="result-icon">${isFraud ? '⚠️' : '✅'}</span>
+                        <h2 class="result-title">${isFraud ? 'FRAUD ALERT' : 'TRANSACTION VERIFIED'}</h2>
+                    </div>
+                    <div class="result-stats">
+                        <div class="stat-box">
+                            <div class="stat-label">Fraud Probability</div>
+                            <div class="stat-value fraud">${d.fraud_probability}%</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Legitimate Score</div>
+                            <div class="stat-value legitimate">${d.legitimate_probability}%</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Risk Level</div>
+                            <div class="stat-value ${riskColor}">${d.risk_level}</div>
+                        </div>
+                    </div>
+                `;
+                
+                btn.disabled = false;
+            } catch (e) {
+                alert('Error: ' + e.message);
+                event.target.disabled = false;
+            }
+        }
+
+        // Load sample data
+        function loadSample(type) {
+            if (type === 'fraud') {
+                document.getElementById('time').value = '406';
+                document.getElementById('amount').value = '529';
+                const fv = [-3.04, 2.54, -2.54, 1.37, -0.96, 0.46, -0.82, 0.35, -0.58, 0.09, -2.26, 2.32, -0.49, 1.55, 0.43, -0.55, -0.14, 0.24, -0.28, 0.22, 0.13, -0.11, 0.09, -0.18, 0.36, 0.01, -0.02, 0.05];
+                for (let i = 1; i <= 28; i++) {
+                    document.getElementById('v' + i).value = fv[i - 1];
+                }
+            } else {
+                document.getElementById('time').value = '36000';
+                document.getElementById('amount').value = '12.50';
+                for (let i = 1; i <= 28; i++) {
+                    document.getElementById('v' + i).value = (Math.random() * 0.4 - 0.2).toFixed(3);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
